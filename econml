@@ -1,0 +1,153 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+
+# Page Configuration
+st.set_page_config(page_title="EconML: Dynamic Pricing Optimizer", layout="wide")
+
+# Custom Style for Academic Look
+st.markdown("""
+    <style>
+    .main { background-color: #f5f5f5; }
+    h1 { color: #2c3e50; }
+    </style>
+    """, unsafe_allow_html=True)
+
+st.title("📈 EconML: AI-Driven Price Optimization")
+st.markdown("""
+This application utilizes **Machine Learning** and **Microeconomic Theory** (Price Elasticity of Demand) 
+to determine the optimal pricing strategy that maximizes total revenue.
+""")
+
+st.divider()
+
+# Sidebar: Data Input
+st.sidebar.header("1. Data Input")
+data_source = st.sidebar.radio("Select Data Source:", ["Generate Random Data (Demo)", "Upload CSV File"])
+
+df = None
+
+if data_source == "Generate Random Data (Demo)":
+    # Simulating a realistic demand curve with some noise
+    n_samples = 500
+    np.random.seed(42)
+    prices = np.random.uniform(10, 100, n_samples)
+    # Demand function: Q = a - b*P + noise (Linear Demand)
+    # Or non-linear: Q = a / P^e (Constant Elasticity) - Let's use a polynomial behavior for visual appeal
+    demand = 2000 - 15 * prices - 0.05 * prices**2 + np.random.normal(0, 100, n_samples)
+    demand = np.maximum(demand, 0) # Demand cannot be negative
+    
+    df = pd.DataFrame({'Price': prices, 'Quantity_Sold': demand})
+    st.sidebar.success("✅ Demo data generated successfully.")
+
+elif data_source == "Upload CSV File":
+    uploaded_file = st.sidebar.file_uploader("Upload CSV (Columns: 'Price', 'Quantity_Sold')", type=["csv"])
+    if uploaded_file:
+        df = pd.read_csv(uploaded_file)
+        if 'Price' in df.columns and 'Quantity_Sold' in df.columns:
+            st.sidebar.success("✅ Data uploaded successfully.")
+        else:
+            st.sidebar.error("❌ CSV must contain 'Price' and 'Quantity_Sold' columns.")
+            df = None
+
+# Main Analysis
+if df is not None:
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        st.subheader("Data Preview")
+        st.dataframe(df.head(10))
+        st.caption(f"Total Samples: {len(df)}")
+
+    with col2:
+        st.subheader("Exploratory Data Analysis")
+        fig, ax = plt.subplots(figsize=(10, 4))
+        sns.scatterplot(x='Price', y='Quantity_Sold', data=df, alpha=0.6, color='blue', ax=ax)
+        ax.set_title("Price vs. Demand Relationship", fontsize=12)
+        ax.set_xlabel("Price ($)")
+        ax.set_ylabel("Quantity Sold (Units)")
+        ax.grid(True, linestyle='--', alpha=0.6)
+        st.pyplot(fig)
+
+    st.divider()
+
+    # Model Training Section
+    if st.button("🚀 Run Optimization Model"):
+        st.subheader("2. Modeling & Optimization")
+
+        # 1. Train Regression Model (Demand Curve Estimation)
+        # Using Polynomial Regression to capture non-linear elasticity
+        X = df[['Price']]
+        y = df['Quantity_Sold']
+
+        poly = PolynomialFeatures(degree=2)
+        X_poly = poly.fit_transform(X)
+        
+        model = LinearRegression()
+        model.fit(X_poly, y)
+        r2_score = model.score(X_poly, y)
+
+        st.info(f"**Model Performance:** Demand Curve R² Score = {r2_score:.4f} (Polynomial Degree 2)")
+
+        # 2. Optimization Loop
+        # We simulate a range of prices to find the Revenue Maxima
+        price_range = np.linspace(df['Price'].min(), df['Price'].max() + 20, 200).reshape(-1, 1)
+        price_range_poly = poly.transform(price_range)
+        
+        predicted_demand = model.predict(price_range_poly)
+        predicted_demand = np.maximum(predicted_demand, 0) # Eliminate negative demand
+        
+        predicted_revenue = price_range.flatten() * predicted_demand
+
+        # Find Optimal Point
+        max_revenue_index = np.argmax(predicted_revenue)
+        optimal_price = price_range[max_revenue_index][0]
+        max_revenue = predicted_revenue[max_revenue_index]
+        expected_demand = predicted_demand[max_revenue_index]
+
+        # 3. Results Display
+        c1, c2, c3 = st.columns(3)
+        c1.metric("💎 Optimal Price", f"${optimal_price:.2f}")
+        c2.metric("📦 Expected Sales", f"{int(expected_demand)} Units")
+        c3.metric("💰 Projected Revenue", f"${max_revenue:,.2f}")
+
+        # 4. Visualization of Optimization
+        st.subheader("Revenue Optimization Curve")
+        
+        fig2, ax1 = plt.subplots(figsize=(12, 6))
+
+        # Plot Revenue Curve
+        color = 'tab:green'
+        ax1.set_xlabel('Price ($)', fontsize=12)
+        ax1.set_ylabel('Projected Revenue ($)', color=color, fontsize=12)
+        ax1.plot(price_range, predicted_revenue, color=color, linewidth=3, label='Revenue Curve')
+        ax1.tick_params(axis='y', labelcolor=color)
+        
+        # Mark Optimal Point
+        ax1.axvline(optimal_price, color='red', linestyle='--', label=f'Optimal Price: ${optimal_price:.2f}')
+        ax1.scatter(optimal_price, max_revenue, color='red', s=100, zorder=5)
+
+        # Create a second y-axis for Demand
+        ax2 = ax1.twinx()  
+        color = 'tab:blue'
+        ax2.set_ylabel('Projected Demand (Units)', color=color, fontsize=12)
+        ax2.plot(price_range, predicted_demand, color=color, linestyle=':', linewidth=2, label='Demand Curve')
+        ax2.tick_params(axis='y', labelcolor=color)
+
+        plt.title("Price vs. Revenue & Demand Optimization", fontsize=14)
+        fig2.tight_layout()
+        st.pyplot(fig2)
+
+        # Economic Insight
+        st.success("""
+        **Economic Interpretation:**
+        The algorithm identified the price point where the marginal revenue equals zero (MR=0). 
+        Increasing the price beyond **${:.2f}** will cause a drop in demand sharp enough to decrease total revenue (Elastic demand region).
+        """.format(optimal_price))
+
+else:
+    st.info("Please generate data or upload a file to begin analysis.")
