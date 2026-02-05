@@ -27,7 +27,7 @@ The core logic relies on the economic concept of **Price Elasticity of Demand ($
 
 1.  Clone the repo:
     ```bash
-    git clone [https://github.com/YOUR_USERNAME/econml-pricing-optimizer.git](https://github.com/YOUR_USERNAME/econml-pricing-optimizer.git)
+    git clone [https://github.com/hamitbuyukguzel-bit/econml-pricing-optimizer.git](https://github.com/hamitbuyukguzel-bit/econml-pricing-optimizer.git)
     ```
 2.  Install requirements:
     ```bash
