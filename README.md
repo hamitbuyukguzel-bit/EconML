@@ -37,11 +37,3 @@ The core logic relies on the economic concept of **Price Elasticity of Demand ($
     ```bash
     streamlit run app.py
     ```
-
-## 📈 Future Work for PhD Research
-This project serves as a baseline. Future iterations could include:
-* **Competitor Analysis:** Incorporating competitor prices as external regressors.
-* **Seasonality:** Using Time-Series Analysis (ARIMA/Prophet) for dynamic pricing over time.
-* **Customer Segmentation:** Clustering users to offer personalized pricing.
-
----
